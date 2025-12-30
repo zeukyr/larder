@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const backBtn = document.getElementById("back");
     const backFromPrepBtn = document.getElementById("back-from-prep");
     const autofillBtn = document.getElementById("autofill");
+    const suggestRecipeBtn = document.getElementById("suggest-recipe-btn");
 
     const form = document.querySelector("form");
     const submitBtn = document.getElementById("add-recipe-btn");
@@ -187,6 +188,216 @@ document.addEventListener("DOMContentLoaded", () => {
             home.classList.remove("active");
             addRecipe.classList.add("active");
         });
+    }
+
+    if (suggestRecipeBtn) {
+        suggestRecipeBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            
+            console.log("🔍 Suggest Recipe button clicked!");
+            
+            const preferences = {
+                time: document.getElementById("time-to-allocate").value,
+                type: document.getElementById("preferred-meal-type").value,
+                ingredients: document.getElementById("ingredients-on-hand").value,
+            };
+            
+            console.log("📋 User preferences:", preferences);
+            
+            chrome.storage.local.set({ preferences }, () => {
+                console.log("💾 Preferences saved!");
+                matchAndDisplayRecipes(preferences);
+            });
+        });
+    }
+    
+    function matchAndDisplayRecipes(preferences) {
+        console.log("🔄 Starting matchAndDisplayRecipes...");
+        
+        chrome.storage.local.get({ recipes: [] }, (result) => {
+            const recipes = result.recipes;
+            console.log("📚 Total recipes in storage:", recipes.length);
+            
+            if (recipes.length === 0) {
+                console.warn("⚠️ No recipes found in storage!");
+                displayMatchedRecipes([]);
+                return;
+            }
+            
+            const matches = findMatchingRecipes(recipes, preferences);
+            console.log("✅ Found", matches.length, "matching recipes");
+            displayMatchedRecipes(matches);
+        });
+    }
+    
+    function findMatchingRecipes(recipes, preferences) {
+        const maxTime = parseInt(preferences.time) || Infinity;
+        const preferredType = preferences.type.toLowerCase().trim();
+        const userIngredients = preferences.ingredients
+            .toLowerCase()
+            .split('\n')
+            .map(i => i.trim())
+            .filter(i => i.length > 0);
+        
+        console.log("🔍 Filtering with:", { 
+            maxTime, 
+            preferredType, 
+            userIngredientsCount: userIngredients.length 
+        });
+        
+        const results = recipes
+            .map((recipe, index) => {
+                console.log(`\n--- Recipe ${index + 1}: ${recipe.title} ---`);
+                
+                const recipeTime = parseInt(recipe.time) || 0;
+                const recipeMealType = (recipe.mealType || '').toLowerCase().trim();
+                
+                console.log(`⏱️ Time: ${recipeTime} minutes (max: ${maxTime})`);
+                console.log(`🍽️ Meal type: "${recipeMealType}" (preferred: "${preferredType}")`);
+                
+                // HARD FILTER 1: Time
+                if (recipeTime > maxTime) {
+                    console.log(`❌ Filtered out: time ${recipeTime} > ${maxTime}`);
+                    return null; 
+                }
+                
+                // HARD FILTER 2: Meal type
+                // Only filter if user specified a type AND it's not "any" AND recipe has a type that doesn't match
+                if (preferredType && preferredType !== 'any' && preferredType !== '') {
+                    if (recipeMealType && recipeMealType !== preferredType) {
+                        console.log(`❌ Filtered out: meal type "${recipeMealType}" doesn't match "${preferredType}"`);
+                        return null; 
+                    }
+                }
+                
+                // SOFT FILTER: Ingredients
+                const recipeIngredients = recipe.ingredients
+                    .toLowerCase()
+                    .split('\n')
+                    .map(i => i.trim())
+                    .filter(i => i.length > 0);
+                
+                console.log(`🥘 Recipe has ${recipeIngredients.length} ingredients`);
+                
+                const ingredientScore = calculateIngredientMatch(
+                    userIngredients, 
+                    recipeIngredients
+                );
+                
+                console.log(`✅ Match score: ${ingredientScore.score}%`);
+                console.log(`✅ Matched: ${ingredientScore.matched.length}, Missing: ${ingredientScore.missing.length}`);
+                
+                return {
+                    ...recipe,
+                    matchScore: ingredientScore.score,
+                    matchedIngredients: ingredientScore.matched,
+                    missingIngredients: ingredientScore.missing,
+                    totalIngredients: recipeIngredients.length
+                };
+            })
+            .filter(recipe => recipe !== null);
+        
+        const sorted = results.sort((a, b) => b.matchScore - a.matchScore);
+        console.log("\n📊 Final results:", sorted.length, "recipes passed filters");
+        
+        return sorted;
+    }
+    
+    function calculateIngredientMatch(userIngredients, recipeIngredients) {
+        const matched = [];
+        const missing = [];
+        
+        const staples = ['salt', 'pepper', 'water', 'oil', 'olive oil', 'vegetable oil'];
+        
+        recipeIngredients.forEach(recipeIng => {
+            const isMatched = userIngredients.some(userIng => {
+                return recipeIng.includes(userIng) || userIng.includes(recipeIng);
+            });
+            
+            if (isMatched) {
+                matched.push(recipeIng);
+            } else {
+                const isStaple = staples.some(staple => recipeIng.includes(staple));
+                if (!isStaple) {
+                    missing.push(recipeIng);
+                }
+            }
+        });
+        
+        const totalNonStaple = recipeIngredients.filter(ing => 
+            !staples.some(staple => ing.includes(staple))
+        ).length;
+        
+        const matchPercentage = totalNonStaple > 0 
+            ? (matched.length / totalNonStaple) * 100 
+            : 100;
+        
+        return {
+            score: Math.round(matchPercentage),
+            matched: matched,
+            missing: missing
+        };
+    }
+    
+    function displayMatchedRecipes(matches) {
+        console.log("🎨 displayMatchedRecipes called with", matches.length, "recipes");
+        
+        const resultsContainer = document.getElementById("recipe-suggestions");
+        
+        if (!resultsContainer) {
+            console.error("❌ No element with id='recipe-suggestions' found!");
+            console.log("Available elements:", document.querySelectorAll('[id*="suggestion"]'));
+            return;
+        }
+        
+        console.log("✅ Found results container:", resultsContainer);
+        
+        resultsContainer.innerHTML = "";
+        
+        if (matches.length === 0) {
+            console.log("ℹ️ No matches, showing empty state");
+            resultsContainer.innerHTML = `
+                <p style="text-align: center; color: #666; padding: 20px;">
+                    No recipes match your criteria. Try adjusting your time or meal type preferences.
+                </p>
+            `;
+            return;
+        }
+        
+        console.log("✅ Rendering", matches.length, "recipe cards");
+        
+        matches.forEach((recipe, index) => {
+            const card = document.createElement("div");
+            card.className = "recipe-card suggestion-card";
+            
+            const matchBadge = recipe.matchScore >= 80 ? '🌟' : 
+                              recipe.matchScore >= 60 ? '✓' : '○';
+            
+            card.innerHTML = `
+                <div class="summary active">
+                    <h3>${recipe.title} ${matchBadge}</h3>
+                    <p><strong>Match Score:</strong> ${recipe.matchScore}%</p>
+                    <p><strong>Time:</strong> ${recipe.time}</p>
+                    <p><strong>Matched Ingredients:</strong> ${recipe.matchedIngredients.length}/${recipe.totalIngredients}</p>
+                    ${recipe.missingIngredients.length > 0 ? `
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; color: #ff6b6b;">
+                                Missing ${recipe.missingIngredients.length} ingredient(s)
+                            </summary>
+                            <ul style="margin: 10px 0; padding-left: 20px; font-size: 0.9em;">
+                                ${recipe.missingIngredients.map(ing => `<li>${ing}</li>`).join('')}
+                            </ul>
+                        </details>
+                    ` : '<p style="color: #51cf66;">✓ You have all ingredients!</p>'}
+                    <img src="${recipe.image || 'icons/pantry16.png'}" alt="${recipe.title}" />
+                </div>
+            `;
+            
+            console.log(`✅ Added card ${index + 1}:`, recipe.title);
+            resultsContainer.appendChild(card);
+        });
+        
+        console.log("✅ All cards rendered successfully!");
     }
     
     if (backBtn && home && addRecipe) {

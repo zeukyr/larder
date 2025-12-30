@@ -277,18 +277,19 @@
                         <label for="time-to-allocate">Time to Allocate</label>
                         <select id="time-to-allocate" name="time-to-allocate" required>
                             <option value="" disabled selected>Select time</option>
-                            <option value="breakfast">0-30 minutes</option>
-                            <option value="lunch">30-60 minutes</option>
-                            <option value="dinner">60-90 minutes</option>
-                            <option value="snack">90+ minutes</option>
+                            <option value="30">0-30 minutes</option>
+                            <option value="60">30-60 minutes</option>
+                            <option value="90">60-90 minutes</option>
+                            <option value="120">90+ minutes</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="ingredients">Ingredients On Hand</label>
-                        <textarea id="ingredients" name="ingredients" placeholder="2 cups flour, 1 egg, 1 tsp salt..." required></textarea>
+                        <label for="ingredients-on-hand">Ingredients On Hand</label>
+                        <textarea id="ingredients-on-hand" name="ingredients" placeholder="2 cups flour, 1 egg, 1 tsp salt..." required></textarea>
                     </div>
                 </form>   
-                <button type="submit" id="suggest-recipe-btn"> Suggest </button>                 
+                <button type="submit" id="suggest-recipe-btn"> Suggest </button> 
+                <div id="recipe-suggestions"></div>                    
             </div>
 
             <!-- Tab: Upload Flyer -->
@@ -317,7 +318,7 @@
                     <input type="text" id="recipe-name" name="recipe-name" placeholder="Mom's Famous Rice Noodles" required>
                 </div>
                 <div class="form-group">
-                    <label for="time">Time</label>
+                    <label for="time">Total Time (in minutes)</label>
                     <input type="text" id="time" name="time" placeholder="30 minutes" required>
                 </div>
                 <div class="form-group">
@@ -347,7 +348,7 @@
                     <img id="recipe-image" src="icons/pantry48.png" alt="Recipe" style="max-width: 100%; border-radius: 10px; margin-top: 8px;">
                 </div>                
             </form>    
-            <button type="submit" id="add-recipe-btn"> Submit </button>        
+            <button type="submit" id="add-recipe-btn"> Submit </button>    
         </div>
     </main>
     <script src="popup.js"></script>
