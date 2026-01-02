@@ -250,12 +250,13 @@
             <div class="links">
                 <a href="#" class="tab-link active" data-tab="recipe-list-tab">My Recipes</a>
                 <a href="#" class="tab-link" data-tab="suggest-me-tab">Suggest Me</a>
-                <a href="#" class="tab-link" data-tab="meal-plan-tab">Upload Flyer</a>
+                <a href="#" class="tab-link" data-tab="meal-plan-tab">Plan Ahead</a>
 
             </div>
 
             <!-- Tab: My Recipes -->
             <div class="tab-content active" id="recipe-list-tab">
+                <input type="text" id="recipe-search" placeholder="Search recipes..." class="mb-2 p-1 border rounded w-full" />
                 <div id="recipe-list"></div>
             </div>
 
@@ -263,7 +264,7 @@
             <div class="tab-content" id="suggest-me-tab">
                 <form>
                     <div class="form-group">
-                        <label for="meal-type">Meal type</label>
+                        <label for="preferred-meal-type">Meal type</label>
                         <select id="preferred-meal-type" name="meal-type" required>
                             <option value="" disabled selected>Select meal type</option>
                             <option value="breakfast">Breakfast</option>
@@ -285,23 +286,35 @@
                     </div>
                     <div class="form-group">
                         <label for="ingredients-on-hand">Ingredients On Hand</label>
-                        <textarea id="ingredients-on-hand" name="ingredients" placeholder="2 cups flour, 1 egg, 1 tsp salt..." required></textarea>
+                        <textarea id="ingredients-on-hand" name="ingredients" placeholder="tomatos, potatos, beef" required></textarea>
                     </div>
                 </form>   
                 <button type="submit" id="suggest-recipe-btn"> Suggest </button> 
                 <div id="recipe-suggestions"></div>                    
             </div>
 
-            <!-- Tab: Upload Flyer -->
+            <!-- Tab: Plan Ahead -->
             <div class="tab-content" id="meal-plan-tab">
                 <div class="form-group">
-                    <label>Upload Grocery Flyer</label>
-                    <input type="file" id="flyer-upload" accept="image/*,application/pdf">
+                    <label for="days">Number of Days to Plan For</label>
+                    <select id="days" name="days" required>
+                        <option value="" disabled selected>Select Number</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="7">7</option>
+                    </select>
                 </div>
-                <button id="analyze-flyer-btn">Analyze Flyer</button>
-                <div id="flyer-results"></div>
+
+                <div class="form-group">
+                    <label>What is on sale this week?</label>
+                    <textarea id="on-sale"> </textarea>
+                </div>
+                <button type="button" id="plan-ahead-btn">Generate Plan</button>
             </div>
 
+            <div id="output" style="display: none; margin-top: 20px; padding: 15px; background: rgba(59, 47, 42, 0.5); border-radius: 10px;"></div>
+
+            </div>
         </div>
 
         <!-- ADD RECIPE PAGE -->
@@ -312,7 +325,7 @@
                 <button id="back">←</button>
                 <button id="autofill">Autofill</button>
             </div>
-            <form>
+            <form id="add-recipe-form">
                 <div class="form-group">
                     <label for="recipe-name">Recipe Name</label>
                     <input type="text" id="recipe-name" name="recipe-name" placeholder="Mom's Famous Rice Noodles" required>

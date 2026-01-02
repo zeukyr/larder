@@ -1,5 +1,4 @@
 (() => {
-    console.log("✅ Recipe parser content script loaded!");
 
     function durationToMinutesHelper(str) {
         if (!str || typeof str !== 'string') return 0;
