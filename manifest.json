@@ -8,6 +8,7 @@
         "128": "icons/pantry128.png"
 },
     "manifest_version": 3,
+    
     "permissions": [
         "storage",
         "activeTab",
@@ -27,7 +28,8 @@
                   }
       },
       "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
       },
       "content_scripts": [
         {

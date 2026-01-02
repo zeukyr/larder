@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
     const home = document.getElementById("main");
     const addRecipe = document.getElementById("add-recipe");
@@ -290,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const matched = [];
         const missing = [];
         
-        const staples = ['salt', 'pepper', 'water', 'oil', 'olive oil', 'vegetable oil'];
+        const staples = ['salt', 'sugar', 'soy sauce', 'pepper', 'water', 'oil', 'olive oil', 'vegetable oil'];
         
         recipeIngredients.forEach(recipeIng => {
             const isMatched = userIngredients.some(userIng => {
@@ -462,6 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
     planAheadBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         planAheadBtn.disabled = true;
+        planAheadBtn.textContent = "Generating...";
 
         const itemsOnSale = document.getElementById("on-sale").value
             .split(",")
@@ -484,9 +486,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
     })})}
 
+async function getApiKey() {
+  let { apiKey } = await chrome.storage.sync.get('apiKey');
+  
+  if (!apiKey) {
+    apiKey = prompt('Enter your OpenRouter API key:');
+    await chrome.storage.sync.set({ apiKey });
+  }
+  
+  return apiKey;
+}
 
 async function generateMealPlan(itemsOnSale, savedRecipes, days) {
-    const apiKey = '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';
+    const apiKey = await getApiKey()
     
     if (!Array.isArray(itemsOnSale) || itemsOnSale.length === 0) {
         throw new Error("Please provide items on sale.");
@@ -504,31 +516,32 @@ REQUIREMENTS:
 - Plan breakfast, lunch, and dinner for each of the ${days} days
 - Prioritize using my saved recipes from the list above
 - Heavily prioritize the ingredients that are on sale
-- Try to reuse ingredients across meals to minimize waste
+- Try to reuse ingredients across meals to minimize waste. Indicate when leftovers are used.
 - Balance nutrition and variety
 
-FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-
+Format your response EXACTLY like this:
 DAY 1
-🌅 Breakfast: [Recipe name or meal idea]
-☀️ Lunch: [Recipe name or meal idea]
-🌙 Dinner: [Recipe name or meal idea]
+Breakfast: [Recipe name or meal idea]
+Lunch: [Recipe name or meal idea]
+Dinner: [Recipe name or meal idea]
 
 DAY 2
-🌅 Breakfast: [Recipe name or meal idea]
-☀️ Lunch: [Recipe name or meal idea]
-🌙 Dinner: [Recipe name or meal idea]
+Breakfast: [Recipe name or meal idea]
+Lunch: [Recipe name or meal idea]
+Dinner: [Recipe name or meal idea]
 
-[Continue for all ${days} days]
+[Continue for rest of days...]
 
 🛒 SHOPPING LIST
 Priority items (on sale):
-⭐ [sale item 1]
-⭐ [sale item 2]
+⭐ sale item 1
+⭐ sale item 2
+(continue)
+
 
 Other ingredients needed:
-- [ingredient 1]
-- [ingredient 2]
+- ingredient 1
+(continue)
 `;
 
     try {
@@ -548,13 +561,14 @@ Other ingredients needed:
                         content: prompt
                     }
                 ],
-                temperature: 0.7,
+                temperature: 1,
                 max_tokens: 1500
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            
             console.error("OpenRouter API Error:", errorData);
             
             if (response.status === 401) {
@@ -569,7 +583,8 @@ Other ingredients needed:
         }
 
         const data = await response.json();
-        
+        planAheadBtn.textContent = "Generate Plan";
+
         if (data.choices && data.choices[0]?.message?.content) {
             return data.choices[0].message.content;
         } else {
@@ -580,6 +595,7 @@ Other ingredients needed:
         console.error("Error generating meal plan:", error);
         throw error;
     }
+
 }
 
 function formatMealPlan(mealPlanText) {
@@ -600,7 +616,7 @@ function formatMealPlan(mealPlanText) {
             break;
         } else if (currentDay) {
             // Split multiple meals on the same line
-            const mealRegex = /(🌅 Breakfast:|☀️ Lunch:|🌙 Dinner:)/g;
+            const mealRegex = /(Breakfast:|Lunch:|Dinner:)/g;
             let match;
             let lastIndex = 0;
 
